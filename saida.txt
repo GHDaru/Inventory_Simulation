@@ -1,0 +1,484 @@
+# Arquivo: demand.py
+import random
+import numpy as np
+from scipy.stats import norm, poisson
+
+class DemandGenerator:
+    def __init__(self, distribution_type, params):
+        """
+        Inicializa a classe DemandGenerator.
+
+        Args:
+            distribution_type (str): Tipo de distribuição ('normal' ou 'poisson').
+            params (dict): Parâmetros para a distribuição.
+        """
+        self.distribution_type = distribution_type
+        self.params = params
+
+    def generate(self):
+        """
+        Gera a demanda com base na distribuição especificada.
+
+        Returns:
+            int: Quantidade demandada.
+        """
+        if self.distribution_type == 'normal':
+            return self.normal_distribution(self.params['mean'], self.params['std_dev'])
+        elif self.distribution_type == 'poisson':
+            return self.poisson_distribution(self.params['lambda'])
+
+    def normal_distribution(self, mean, std_dev):
+        """
+        Gera demanda baseada em uma distribuição normal.
+
+        Args:
+            mean (float): Média da distribuição.
+            std_dev (float): Desvio padrão da distribuição.
+
+        Returns:
+            int: Quantidade demandada.
+        """
+        return max(0, int(random.gauss(mean, std_dev)))
+
+    def poisson_distribution(self, lambda_):
+        """
+        Gera demanda baseada em uma distribuição Poisson.
+
+        Args:
+            lambda_ (float): Lambda da distribuição Poisson.
+
+        Returns:
+            int: Quantidade demandada.
+        """
+        return max(0, np.random.poisson(lambda_))
+
+    @staticmethod
+    def generate_historical_data(distribution_type, params, days):
+        """
+        Gera dados históricos de demanda.
+
+        Args:
+            distribution_type (str): Tipo de distribuição ('normal' ou 'poisson').
+            params (dict): Parâmetros para a distribuição.
+            days (int): Número de dias de dados históricos a serem gerados.
+
+        Returns:
+            list: Lista de demandas geradas para cada dia.
+        """
+        generator = DemandGenerator(distribution_type, params)
+        return [generator.generate() for _ in range(days)]
+
+    @staticmethod
+    def calculate_distribution_parameters(historical_data, distribution_type):
+        """
+        Calcula os parâmetros da distribuição com base nos dados históricos.
+
+        Args:
+            historical_data (list): Lista de demandas históricas.
+            distribution_type (str): Tipo de distribuição ('normal' ou 'poisson').
+
+        Returns:
+            dict: Parâmetros calculados para a distribuição.
+        """
+        if distribution_type == 'normal':
+            mean = np.mean(historical_data)
+            std_dev = np.std(historical_data)
+            return {'mean': mean, 'std_dev': std_dev}
+        elif distribution_type == 'poisson':
+            lambda_ = np.mean(historical_data)
+            return {'lambda': lambda_}
+
+    @staticmethod
+    def best_fit_distribution(historical_data):
+        """
+        Encontra o melhor ajuste da distribuição (entre normal e Poisson) com base nos dados históricos.
+
+        Args:
+            historical_data (list): Lista de demandas históricas.
+
+        Returns:
+            str: Tipo de distribuição que melhor se ajusta aos dados ('normal' ou 'poisson').
+            dict: Parâmetros calculados para a distribuição.
+        """
+        # Calcular parâmetros para distribuição normal
+        normal_params = DemandGenerator.calculate_distribution_parameters(historical_data, 'normal')
+        normal_fit = norm(loc=normal_params['mean'], scale=normal_params['std_dev']).pdf(historical_data)
+        normal_likelihood = np.sum(np.log(normal_fit))
+
+        # Calcular parâmetros para distribuição Poisson
+        poisson_params = DemandGenerator.calculate_distribution_parameters(historical_data, 'poisson')
+        poisson_fit = poisson(mu=poisson_params['lambda']).pmf(historical_data)
+        poisson_likelihood = np.sum(np.log(poisson_fit))
+
+        # Comparar a verossimilhança e escolher a melhor distribuição
+        if normal_likelihood > poisson_likelihood:
+            return 'normal', normal_params
+        else:
+            return 'poisson', poisson_params
+
+# Arquivo: inventory.py
+class Inventory:
+    def __init__(self, initial_stock):
+        self.initial_stock = initial_stock
+        self.current_stock = initial_stock
+        self.pending_orders = []
+        self.current_day = 0
+        self.order_history = []  # Adicionando histórico de ordens
+
+    def receive_orders(self, current_day):
+        orders_to_remove = []
+        for order in self.pending_orders:
+            if order.is_arrived(current_day):
+                self.current_stock += order.quantity
+                orders_to_remove.append(order)
+                print(f"Order received: {order.quantity} units")
+        for order in orders_to_remove:
+            self.pending_orders.remove(order)
+
+    def update_stock(self, demand):
+        if demand > self.current_stock:
+            unmet_demand = demand - self.current_stock
+            self.current_stock = 0
+            return unmet_demand
+        else:
+            self.current_stock -= demand
+            return 0
+
+    def pending_order_quantity(self):
+        return sum(order.quantity for order in self.pending_orders)
+
+    def place_order(self, order):
+        self.pending_orders.append(order)
+        # Adiciona a ordem ao histórico como JSON no momento da inserção
+        self.order_history.append({
+            'id': order.id,
+            'product': order.product.name,
+            'quantity': order.quantity,
+            'arrival_day': order.arrival_day,
+            'status': 'placed'
+        })
+
+
+# Arquivo: order.py
+import uuid
+import json
+
+class Order:
+    def __init__(self, product, quantity, arrival_day):
+        """
+        Inicializa a classe Order.
+
+        Args:
+            product (Product): O produto que está sendo pedido.
+            quantity (int): Quantidade do produto no pedido.
+            arrival_day (int): Dia de chegada do pedido.
+        """
+        self.id = str(uuid.uuid4())  # Atribui um ID único à ordem
+        self.product = product
+        self.quantity = quantity
+        self.arrival_day = arrival_day
+
+    def is_arrived(self, current_day):
+        """
+        Verifica se o pedido chegou no dia atual.
+
+        Args:
+            current_day (int): O dia atual da simulação.
+
+        Returns:
+            bool: True se o pedido chegou, False caso contrário.
+        """
+        return current_day >= self.arrival_day
+
+    def to_dict(self):
+        """
+        Retorna os detalhes da ordem como um dicionário.
+
+        Returns:
+            dict: Detalhes da ordem.
+        """
+        return {
+            'id': self.id,
+            'product': self.product.name,
+            'quantity': self.quantity,
+            'arrival_day': self.arrival_day
+        }
+
+
+# Arquivo: product.py
+from .demand import DemandGenerator
+from .inventory import Order
+import numpy as np
+
+class Product:
+    def __init__(self, name, initial_stock = 0, stock_policy_params = None, family = None, demand_params=None, historical_data=None):
+        self.name = name
+        self.initial_stock = initial_stock
+        self.current_stock = initial_stock
+        self.family = family
+        self.stock_policy = StockPolicy(**stock_policy_params)
+        self.demand_generator = None
+        self.current_stock_history = []
+        self.stockout_days = 0
+        self.unmet_demand_history = []
+        self.unmet_demand = 0
+        self.daily_info = []  # Adding the list of dictionaries to store daily information
+
+        if historical_data:
+            distribution_type, params = DemandGenerator.best_fit_distribution(historical_data)
+            self.demand_generator = DemandGenerator(distribution_type, params)
+        elif demand_params:
+            self.demand_generator = DemandGenerator(demand_params['distribution_type'], demand_params['params'])
+
+    def update_stock(self, demand, current_day, orders_quantity):
+        # Entradas de estoque ocorrem no final do dia        
+        #demanda não atendida
+        self.unmet_demand = 0 if demand <= self.current_stock else demand - self.current_stock
+        #Atualiza posição de estoque
+        self.current_stock = 0 if demand >= self.current_stock else self.current_stock - demand
+        self.daily_info.append({
+                'name':self.name,
+                'day': current_day,
+                'demand': demand,                
+                'sales': demand,
+                'unmet_demand': self.unmet_demand
+                
+        })               
+
+
+# Arquivo: product_family.py
+class ProductFamily:
+    def __init__(self, name):
+        """
+        Inicializa a classe ProductFamily.
+
+        Args:
+            name (str): Nome da família de produtos.
+        """
+        self.name = name
+        self.products = []
+        self.stock_history = []
+        self.min_stock_history = []
+        self.max_stock_history = []
+
+    def add_product(self, product):
+        """
+        Adiciona um produto à família.
+
+        Args:
+            product (Product): Produto a ser adicionado.
+        """
+        self.products.append(product)
+
+    def calculate_aggregated_stock(self):
+        """
+        Calcula o estoque agregado de todos os produtos na família.
+        """
+        num_days = len(self.products[0].current_stock_history)
+        self.stock_history = [sum(product.current_stock_history[day] for product in self.products) for day in range(num_days)]
+
+    def calculate_min_max_aggregated_stock(self):
+        """
+        Calcula os estoques mínimo e máximo agregados de todos os produtos na família.
+        """
+        num_days = len(self.products[0].current_stock_history)
+        self.min_stock_history = [min(product.current_stock_history[day] for product in self.products) for day in range(num_days)]
+        self.max_stock_history = [max(product.current_stock_history[day] for product in self.products) for day in range(num_days)]
+
+# Arquivo: simulation.py
+import pandas as pd
+from .visualization import plot_stock_levels, plot_family_stock_levels, save_stock_history, plot_unmet_demand, plot_stockout_days
+
+class Simulator:
+    def __init__(self, products, days):
+        """
+        Inicializa a classe Simulator.
+
+        Args:
+            products (list[Product]): Lista de produtos a serem gerenciados pelo inventário.
+            days (int): Número de dias para a simulação.
+        """
+        self.products = products
+        self.days = days
+        self.stock_history = {product.name: [] for product in products}
+
+    def run(self):
+        """
+        Executa a simulação por um número definido de dias.
+        """
+        all_daily_info = []
+
+        for day in range(self.days):
+            for product in self.products:
+                product.inventory.current_day = day
+                demand = product.demand_generator.generate()
+                orders_quantity = product.stock_policy.check_reorder()
+                product.update_stock(demand, day, orders_quantity)
+                product.inventory.receive_orders(day)
+                self.stock_history[product.name].append(product.inventory.current_stock)
+                product.current_stock_history.append(product.inventory.current_stock)
+                all_daily_info.extend(product.daily_info)
+
+        # Plota os níveis de estoque dos produtos ao longo do tempo
+        # plot_stock_levels(self.stock_history)
+        # Salva o histórico de estoque em um DataFrame e arquivos
+        df = save_stock_history(self.stock_history)
+
+        # Calcula e plota os níveis de estoque agregados para cada família de produtos
+        # for family in set(product.family for product in self.products):
+        #     family.calculate_aggregated_stock()
+        #     family.calculate_min_max_aggregated_stock()
+        #     plot_family_stock_levels(family)
+
+        # Plota a demanda não atendida e os dias de ruptura de estoque para cada produto
+        # for product in self.products:
+        #     plot_unmet_demand(product)
+        #     plot_stockout_days(product)
+
+        # Criar o DataFrame com as informações diárias
+        df_daily_info = pd.DataFrame(all_daily_info)
+        return df_daily_info
+
+
+# Arquivo: stock_policy.py
+from base.order import Order
+class StockPolicy:
+    def __init__(self, product, type, min_level=None, max_level=None, lead_time=None, lot_size=None):
+        """
+        Inicializa a classe StockPolicy.
+
+        Args:
+            product (Product): O produto ao qual esta política se aplica.
+            type (str): Tipo de política de estoque ('minmax' ou 'lot_size').
+            min_level (int, optional): Nível mínimo de estoque (ponto de pedido).
+            max_level (int, optional): Nível máximo de estoque.
+            lead_time (int, optional): Tempo de reposição (dias).
+            lot_size (int, optional): Tamanho do lote para reposição.
+        """
+        self.product = product
+        self.type = type
+        self.min_level = min_level
+        self.max_level = max_level
+        self.lead_time = lead_time
+        self.lot_size = lot_size
+        self.total_orders = 0
+
+    def check_reorder(self):
+        """
+        Verifica se um novo pedido de reposição deve ser feito.
+        """
+        total_stock = self.product.inventory.current_stock + self.product.inventory.pending_order_quantity()
+        orders_quantity = 0
+
+        if self.type == 'minmax':
+            if total_stock <= self.min_level:
+                order_quantity = self.max_level - total_stock
+                order = Order(self.product, order_quantity, self.product.inventory.current_day + self.lead_time)
+                self.product.inventory.place_order(order)
+                self.total_orders += 1
+                orders_quantity += 1
+                print(f"Order placed for {self.product.name}: {order_quantity} units, arriving in {self.lead_time} days")
+        if self.type == 'lot_size':
+            if total_stock <= self.min_level:
+                order_quantity = self.lot_size
+                order = Order(self.product, order_quantity, self.product.inventory.current_day + self.lead_time)
+                self.product.inventory.place_order(order)
+                self.total_orders += 1
+                orders_quantity += 1
+                print(f"Order placed for {self.product.name}: {order_quantity} units, arriving in {self.lead_time} days")
+
+        return orders_quantity
+
+
+# Arquivo: visualization.py
+import matplotlib.pyplot as plt
+import pandas as pd
+
+def plot_stock_levels(stock_history):
+    """
+    Plota os níveis de estoque dos produtos ao longo do tempo.
+
+    Args:
+        stock_history (dict): Dicionário contendo o histórico de níveis de estoque para cada produto.
+    """
+    plt.figure(figsize=(12, 6))
+    for product_name, levels in stock_history.items():
+        plt.plot(levels, label=product_name)
+    plt.xlabel('Day')
+    plt.ylabel('Stock Level')
+    plt.title('Stock Levels Over Time')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+def plot_family_stock_levels(family):
+    """
+    Plota os níveis de estoque agregados de uma família de produtos ao longo do tempo.
+
+    Args:
+        family (ProductFamily): Instância da classe ProductFamily cujos níveis de estoque agregados serão plotados.
+    """
+    plt.figure(figsize=(12, 6))
+    plt.plot(family.stock_history, label='Aggregated Stock')
+    plt.plot(family.min_stock_history, label='Min Stock', linestyle='--')
+    plt.plot(family.max_stock_history, label='Max Stock', linestyle='--')
+    plt.xlabel('Day')
+    plt.ylabel('Stock Level')
+    plt.title(f'{family.name} Stock Levels Over Time')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+def save_stock_history(stock_history, file_format='csv', file_name='stock_history'):
+    """
+    Salva o histórico de níveis de estoque em um arquivo CSV ou Excel.
+
+    Args:
+        stock_history (dict): Dicionário contendo o histórico de níveis de estoque para cada produto.
+        file_format (str): Formato do arquivo ('csv' ou 'excel').
+        file_name (str): Nome do arquivo (sem extensão).
+
+    Returns:
+        pd.DataFrame: DataFrame contendo o histórico de níveis de estoque.
+    """
+    df = pd.DataFrame(stock_history)
+    if file_format == 'csv':
+        df.to_csv(f'{file_name}.csv', index=False)
+    elif file_format == 'excel':
+        df.to_excel(f'{file_name}.xlsx', index=False)
+    return df
+
+def plot_unmet_demand(product):
+    """
+    Plota a demanda não atendida ao longo do tempo para um produto específico.
+
+    Args:
+        product (Product): Instância da classe Product cujos dados de demanda não atendida serão plotados.
+    """
+    plt.figure(figsize=(12, 6))
+    plt.plot(product.unmet_demand_history, label=f'Unmet Demand for {product.name}')
+    plt.xlabel('Day')
+    plt.ylabel('Unmet Demand')
+    plt.title(f'Unmet Demand for {product.name} Over Time')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+def plot_stockout_days(product):
+    """
+    Plota os dias de ruptura de estoque ao longo do tempo para um produto específico.
+
+    Args:
+        product (Product): Instância da classe Product cujos dados de dias de ruptura de estoque serão plotados.
+    """
+    stockout_days = [1 if demand > 0 else 0 for demand in product.unmet_demand_history]
+    plt.figure(figsize=(12, 6))
+    plt.plot(stockout_days, label=f'Stockout Days for {product.name}')
+    plt.xlabel('Day')
+    plt.ylabel('Stockout')
+    plt.title(f'Stockout Days for {product.name} Over Time')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
