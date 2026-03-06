@@ -136,7 +136,7 @@ function ProductForm({ product, onChange, onRemove, uploadedData }) {
   );
 }
 
-export default function SimulationForm({ onSubmit, uploadedData, loading }) {
+export default function SimulationForm({ onSubmit, uploadedData, loading, submitLabel }) {
   const [days, setDays] = useState(90);
   const [products, setProducts] = useState([JSON.parse(JSON.stringify(DEFAULT_PRODUCT))]);
 
@@ -199,7 +199,7 @@ export default function SimulationForm({ onSubmit, uploadedData, loading }) {
           + Add product
         </button>
         <button type="submit" className="btn-primary" disabled={loading || products.length === 0}>
-          {loading ? 'Running…' : 'Run simulation'}
+          {loading ? 'Running…' : (submitLabel || 'Run simulation')}
         </button>
       </div>
     </form>

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import simulation, upload
+from app.routers import simulation, upload, datasets, runs
 
 app = FastAPI(
     title="Inventory Simulation API",
@@ -25,6 +25,8 @@ app.add_middleware(
 
 app.include_router(simulation.router, prefix="/api")
 app.include_router(upload.router, prefix="/api")
+app.include_router(datasets.router, prefix="/api")
+app.include_router(runs.router, prefix="/api")
 
 
 @app.get("/api/health", tags=["health"])
