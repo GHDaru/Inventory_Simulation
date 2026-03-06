@@ -1,0 +1,131 @@
+/* ── Layout ───────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+}
+
+.app { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+.app-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.app-header h1 { font-size: 2rem; }
+.app-header p  { color: #555; margin-top: 6px; }
+
+.app-main { display: flex; flex-direction: column; gap: 24px; }
+
+.panel {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+/* ── Forms ────────────────────────────────────────────────── */
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.form-row label { width: 180px; font-weight: 500; flex-shrink: 0; }
+.form-row input, .form-row select {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+fieldset {
+  border: 1px solid #dde;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+legend { font-weight: 600; padding: 0 6px; }
+
+details { border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 12px; }
+details summary { padding: 10px 14px; cursor: pointer; font-weight: 600; }
+.product-form { padding: 14px 16px; }
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+  justify-content: flex-end;
+}
+
+/* ── Buttons ──────────────────────────────────────────────── */
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: opacity .15s;
+}
+button:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-primary  { background: #4f86c6; color: #fff; }
+.btn-primary:hover:not(:disabled) { opacity: .85; }
+.btn-secondary { background: #e8eaf0; color: #333; }
+.btn-secondary:hover { background: #d8dae8; }
+.btn-remove   { background: #fde8e8; color: #c0392b; margin-top: 8px; }
+.btn-remove:hover { background: #f8d0d0; }
+
+/* ── File upload ──────────────────────────────────────────── */
+.file-upload { }
+.file-upload h3 { margin-bottom: 8px; }
+.hint { color: #666; font-size: .88rem; margin-bottom: 12px; }
+
+.drop-zone {
+  border: 2px dashed #9ab;
+  border-radius: 10px;
+  padding: 28px;
+  text-align: center;
+  color: #667;
+  cursor: pointer;
+  transition: background .15s;
+}
+.drop-zone:hover, .drop-zone.loading { background: #f0f4f8; }
+
+.upload-message { margin-top: 10px; font-size: .9rem; }
+.upload-message.success { color: #27ae60; }
+.upload-message.error   { color: #c0392b; }
+
+.info-text { color: #27ae60; font-style: italic; margin-bottom: 8px; }
+
+/* ── Results ──────────────────────────────────────────────── */
+.results-view h2 { margin-bottom: 20px; }
+.chart-card { margin-bottom: 24px; }
+.chart-card h3 { margin-bottom: 12px; }
+
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .92rem;
+}
+.summary-table th, .summary-table td {
+  border: 1px solid #e0e0e0;
+  padding: 8px 12px;
+  text-align: right;
+}
+.summary-table th:first-child, .summary-table td:first-child {
+  text-align: left;
+}
+.summary-table thead { background: #f5f6fa; }
+.summary-table tbody tr:hover { background: #fafbff; }
+
+.error-message {
+  color: #c0392b;
+  background: #fde8e8;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-top: 14px;
+}
