@@ -1,13 +1,30 @@
 import io
+import pathlib
 import uuid
 import numpy as np
 import pandas as pd
 from datetime import datetime, timezone
 from fastapi import APIRouter, File, UploadFile, HTTPException, Form
+from fastapi.responses import FileResponse
 from app.models.runs_models import DatasetMeta
 from app import store
 
+_STATIC_DIR = pathlib.Path(__file__).parent.parent / "static"
+_EXAMPLE_FILE = _STATIC_DIR / "exemplo_demanda.csv"
+
 router = APIRouter(prefix="/datasets", tags=["datasets"])
+
+
+@router.get("/example-file", tags=["datasets"])
+def download_example_file():
+    """Return the example demand CSV file so users can inspect the expected format."""
+    if not _EXAMPLE_FILE.exists():
+        raise HTTPException(status_code=404, detail="Example file not found.")
+    return FileResponse(
+        path=str(_EXAMPLE_FILE),
+        media_type="text/csv",
+        filename="exemplo_demanda.csv",
+    )
 
 
 @router.post("", response_model=DatasetMeta, status_code=201)

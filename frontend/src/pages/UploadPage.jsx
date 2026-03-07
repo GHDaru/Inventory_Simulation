@@ -9,10 +9,16 @@ import {
   CircularProgress,
   Chip,
   Stack,
+  Divider,
+  Tooltip,
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import DownloadIcon from '@mui/icons-material/Download';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { uploadDataset } from '../api/api';
+
+const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export default function UploadPage() {
   const inputRef = useRef(null);
@@ -51,6 +57,27 @@ export default function UploadPage() {
     }
   }
 
+  async function useExampleFile() {
+    setStatus('loading');
+    setMessage('');
+    setDatasetMeta(null);
+    try {
+      const res = await fetch(`${BASE_URL}/api/datasets/example-file`);
+      if (!res.ok) throw new Error('Falha ao obter arquivo de exemplo.');
+      const blob = await res.blob();
+      const file = new File([blob], 'exemplo_demanda.csv', { type: 'text/csv' });
+      const result = await uploadDataset(file, 'demand');
+      setStatus('success');
+      setMessage('Arquivo de exemplo enviado com sucesso!');
+      setDatasetMeta(result);
+      sessionStorage.setItem('activeDatasetId', result.id);
+      sessionStorage.setItem('activeDatasetName', result.filename);
+    } catch (err) {
+      setStatus('error');
+      setMessage(`Erro: ${err.message}`);
+    }
+  }
+
   function onInputChange(e) {
     handleFile(e.target.files?.[0]);
   }
@@ -70,6 +97,45 @@ export default function UploadPage() {
         Envie um arquivo CSV, Excel (.xlsx/.xls) ou JSON com dados históricos de demanda.
         O dataset ficará disponível para uso nas simulações.
       </Typography>
+
+      {/* Example file section */}
+      <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: 'grey.50' }}>
+        <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+          Arquivo de exemplo
+        </Typography>
+        <Typography variant="body2" color="text.secondary" mb={2}>
+          Não tem um arquivo? Baixe o modelo de exemplo com a coluna <code>demand</code> ou
+          use-o diretamente para testar a simulação.
+        </Typography>
+        <Stack direction="row" spacing={1}>
+          <Tooltip title="Baixar o arquivo CSV de exemplo para ver o formato esperado">
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<DownloadIcon />}
+              component="a"
+              href={`${BASE_URL}/api/datasets/example-file`}
+              download="exemplo_demanda.csv"
+            >
+              Baixar arquivo de exemplo
+            </Button>
+          </Tooltip>
+          <Tooltip title="Carregar o arquivo de exemplo como dataset ativo">
+            <Button
+              variant="outlined"
+              size="small"
+              color="secondary"
+              startIcon={<PlayArrowIcon />}
+              onClick={useExampleFile}
+              disabled={status === 'loading'}
+            >
+              Usar arquivo de exemplo
+            </Button>
+          </Tooltip>
+        </Stack>
+      </Paper>
+
+      <Divider sx={{ mb: 3 }} />
 
       <Paper sx={{ p: 3, mb: 2 }}>
         <TextField
