@@ -167,3 +167,4 @@ frontend/dist/
 
 # Backend virtual env
 backend/.venv/
+backend/test.db
